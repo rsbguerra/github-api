@@ -1,0 +1,19 @@
+apiVersion: api/v1
+kind: Deployment
+metadata:
+  name: github-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: github-api
+  template:
+    metadata:
+      labels:
+        app: github-api
+    spec:
+      containers:
+      - name: github-api
+        image: golang:1.24-alpine
+        ports:
+        - containerPort: 8080
