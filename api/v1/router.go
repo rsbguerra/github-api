@@ -8,5 +8,6 @@ import (
 func RegisterRoutes(router *gin.Engine) {
 	router.POST("/:token/create-repo/", controllers.CreateRepo)
 	router.DELETE("/:token/delete-repo/", controllers.DeleteRepo)
-	router.GET("/:token/list-repos/", controllers.ListRepos)
+	router.GET("/:token/list-repos/:username", controllers.ListRepos)
+	router.GET("/:token/pull-requests/:username/:repoName", controllers.PullRequests)
 }
