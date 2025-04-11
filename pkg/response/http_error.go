@@ -14,3 +14,9 @@ func StatusUnauthorized(c *gin.Context) {
 func StatusInternalServerError(c *gin.Context, err error) {
 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error: " + err.Error()})
 }
+func StatusNotFound(c *gin.Context) {
+	c.JSON(http.StatusNotFound, gin.H{"error": "Resource not found"})
+}
+func StatusForbidden(c *gin.Context) {
+	c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+}
