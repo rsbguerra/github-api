@@ -166,3 +166,9 @@ func PullRequests(c *gin.Context) {
 	// 200 OK: if the pull requests are successfully retrieved
 	response.StatusOK(c, pullRequests)
 }
+
+// Index handles the root endpoint of the API.
+// It returns a 200 OK response with no content.
+func Index(c *gin.Context) {
+	response.StatusOK(c, nil)
+}
