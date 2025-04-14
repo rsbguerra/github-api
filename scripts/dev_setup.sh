@@ -8,7 +8,4 @@ yay -Syu docker minikube kubectl docker-buildx
 sudo systemctl enable docker
 sudo usermod -aG docker "$USER" && newgrp docker
 
-go get github.com/gin-gonic/gin
-go get github.com/go-git/go-git/v5
-go get github.com/google/go-github/v50/github
-go get golang.org/x/oauth2
+go mod tidy

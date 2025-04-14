@@ -1,4 +1,4 @@
-apiVersion: api/v1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: github-api
@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
       - name: github-api
-        image: golang:1.24-alpine
+        image: ghcr.io/rsbguerra/github-api:latest
         ports:
         - containerPort: 8080
