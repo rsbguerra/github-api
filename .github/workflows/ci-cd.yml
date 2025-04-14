@@ -21,7 +21,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.20
+          go-version: 1.24
 
       # Install dependencies
       - name: Install dependencies
@@ -46,7 +46,7 @@ jobs:
       # Build Docker image
       - name: Build Docker image
         run: |
-          docker build -t github-api:latest .
+          docker build -t ghcr.io/rsbguerra/github-api:latest .
 
       # Set up Minikube
       - name: Set up Minikube
