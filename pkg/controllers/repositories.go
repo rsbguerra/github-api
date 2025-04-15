@@ -20,6 +20,9 @@ import (
 //   - 201 Created: If the repository is successfully created.
 //   - 400 Bad Request: If the repository model is invalid or cannot be created.
 //   - 401 Unauthorized: If the provided token is invalid or authentication fails.
+//   - 403 Forbidden: If the user does not have permission to create the repository.
+//   - 404 Not Found: If the specified user does not exist or has no repositories.
+//   - 409 Conflict: If the repository already exists.
 //   - 500 Internal Server Error: If an error occurs while creating the repository.
 func CreateRepo(c *gin.Context) {
 	var repo, err = models.ConvertFromContext(c)
@@ -27,11 +30,36 @@ func CreateRepo(c *gin.Context) {
 		response.StatusBadRequest(c)
 		return
 	}
+	// Check if the token is valid
 	client, err := auth.GetClient(c.Param("token"))
 	if err != nil {
 		response.StatusUnauthorized(c)
 		return
 	}
+
+	// Check if the repository model is valid
+	exists, err := repo.RepoExists(client)
+
+	if exists || err != nil {
+		var ghErr *github.ErrorResponse
+		if errors.As(err, &ghErr) {
+			switch ghErr.Response.StatusCode {
+			case 403:
+				response.StatusForbidden(c)
+				return
+			case 404:
+				response.StatusNotFound(c)
+				return
+			case 409:
+				response.StatusConflict(c, repo)
+				return
+			default:
+				response.StatusInternalServerError(c, err)
+				return
+			}
+		}
+	}
+
 	if err := repo.CreateNew(client); err != nil {
 		response.StatusInternalServerError(c, err)
 		return
@@ -57,12 +85,6 @@ func CreateRepo(c *gin.Context) {
 func DeleteRepo(c *gin.Context) {
 	var repo, err = models.ConvertFromContext(c)
 
-	// Check if the repository model is valid
-	if (repo == models.RepositoryModel{}) || err != nil {
-		response.StatusBadRequest(c)
-		return
-	}
-
 	client, err := auth.GetClient(c.Param("token"))
 	// Check if the token is valid
 	if err != nil {
@@ -71,7 +93,30 @@ func DeleteRepo(c *gin.Context) {
 	}
 
 	// Check if the repository exists
+	exists, err := repo.RepoExists(client)
+	if exists || err != nil {
+		var ghErr *github.ErrorResponse
+		if errors.As(err, &ghErr) {
+			switch ghErr.Response.StatusCode {
+			case 403:
+				response.StatusForbidden(c)
+				return
+			case 404:
+				response.StatusNotFound(c)
+				return
+			case 409:
+				response.StatusConflict(c, repo)
+				return
+			default:
+				response.StatusInternalServerError(c, err)
+				return
+			}
+		}
+	}
+
+	// Delete the repository
 	if err := repo.DeleteRepo(client); err != nil {
+
 		response.StatusInternalServerError(c, err)
 	}
 
@@ -104,8 +149,9 @@ func PullRequests(c *gin.Context) {
 		return
 	}
 
-	opt := &github.PullRequestListOptions{State: "open", Sort: "created", Direction: "desc"}
-	pullRequests, _, err := client.PullRequests.List(c, username, repoName, opt)
+	opt := &github.PullRequestListOptions{}
+	pullRequests, _, err := client.ListPullRequests(c, username, repoName, opt)
+
 	if err != nil {
 		var ghErr *github.ErrorResponse
 		if errors.As(err, &ghErr) {
@@ -130,6 +176,42 @@ func PullRequests(c *gin.Context) {
 
 	// 200 OK: if the pull requests are successfully retrieved
 	response.StatusOK(c, pullRequests)
+}
+
+// ListRepos handles the retrieval of repositories for a user.
+// It expects the following parameters:
+//   - token: The authentication token for the GitHub API.
+//   - username: The GitHub username whose repositories are to be listed.
+//
+// The function authenticates the user using the provided token and retrieves
+// the list of repositories owned by the specified username, sorted by the
+// last updated time in descending order.
+//
+// Responses:
+//   - 200 OK: If the repositories are successfully retrieved.
+//   - 401 Unauthorized: If the provided token is invalid or authentication fails.
+//   - 403 Forbidden: If the user does not have permission to access the repositories.
+//   - 404 Not Found: If the specified user does not exist or has no repositories.
+//   - 500 Internal Server Error: If an error occurs while retrieving the repositories.
+func ListRepos(c *gin.Context) {
+	token, username := c.Param("token"), c.Param("username")
+	client, err := auth.GetClient(token)
+
+	// Check if the token is valid
+	if err != nil {
+		response.StatusUnauthorized(c)
+		return
+	}
+
+	opt := &github.RepositoryListOptions{Type: "owner", Sort: "updated", Direction: "desc"}
+	repos, _, err := client.ListRepos(c, username, opt)
+
+	// Check if the request to list repositories was successful
+	if err != nil {
+		response.StatusInternalServerError(c, err)
+		return
+	}
+	response.StatusOK(c, repos)
 }
 
 // Index handles the root endpoint of the API.

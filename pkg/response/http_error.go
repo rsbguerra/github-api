@@ -1,6 +1,7 @@
 package response
 
 import (
+	"github-api/pkg/models"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -19,4 +20,8 @@ func StatusNotFound(c *gin.Context) {
 }
 func StatusForbidden(c *gin.Context) {
 	c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+}
+
+func StatusConflict(c *gin.Context, repo models.RepositoryModel) {
+	c.JSON(http.StatusConflict, gin.H{"error": "Conflict, repository already exists", "repo": repo})
 }
