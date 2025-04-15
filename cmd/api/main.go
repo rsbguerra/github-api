@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github-api/api/v1"
+	"github-api/pkg/api/v1"
 	"github.com/gin-gonic/gin"
 	"log"
 )

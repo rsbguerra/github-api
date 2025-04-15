@@ -116,7 +116,6 @@ func DeleteRepo(c *gin.Context) {
 
 	// Delete the repository
 	if err := repo.DeleteRepo(client); err != nil {
-
 		response.StatusInternalServerError(c, err)
 	}
 
