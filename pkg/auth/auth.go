@@ -25,5 +25,12 @@ func GetClient(token string) (interfaces.GitHubClient, error) {
 	)
 	tc := oauth2.NewClient(context.Background(), ts)
 	client := github.NewClient(tc)
+
+	// Validate the token by making a test request to the GitHub API
+	_, _, err := client.Users.Get(context.Background(), "")
+	if err != nil {
+		return nil, err // Return the error if the token is invalid
+	}
+
 	return &models.GitHubClientWrapper{Client: client}, nil
 }

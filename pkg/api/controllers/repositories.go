@@ -33,7 +33,7 @@ func CreateRepo(c *gin.Context) {
 
 	var repo, err = models.ConvertFromContext(c)
 	if (repo == models.RepositoryModel{}) || err != nil {
-		response.HandleGithubErrors(c, err)
+		response.StatusBadRequest(c)
 		return
 	}
 	// Check if the token is valid
@@ -43,27 +43,11 @@ func CreateRepo(c *gin.Context) {
 		return
 	}
 
-	// Check if the repository model is valid
+	// Check if the repository model already exists
 	exists, err := repo.RepoExists(client)
-
 	if exists || err != nil {
-		var ghErr *github.ErrorResponse
-		if errors.As(err, &ghErr) {
-			switch ghErr.Response.StatusCode {
-			case 403:
-				response.StatusForbidden(c)
-				return
-			case 404:
-				response.StatusNotFound(c)
-				return
-			case 409:
-				response.StatusConflict(c, repo)
-				return
-			default:
-				response.StatusInternalServerError(c, err)
-				return
-			}
-		}
+		response.StatusConflict(c)
+		return
 	}
 
 	if err := repo.CreateNew(client); err != nil {
@@ -114,27 +98,12 @@ func DeleteRepo(c *gin.Context) {
 	// Check if the repository exists
 	exists, err := repo.RepoExists(client)
 	if exists || err != nil {
-		var ghErr *github.ErrorResponse
-		if errors.As(err, &ghErr) {
-			switch ghErr.Response.StatusCode {
-			case 403:
-				response.StatusForbidden(c)
-				return
-			case 404:
-				response.StatusNotFound(c)
-				return
-			case 409:
-				response.StatusConflict(c, repo)
-				return
-			default:
-				response.StatusInternalServerError(c, err)
-				return
-			}
-		}
+		response.HandleGithubErrors(c, err)
 	}
 
 	// Delete the repository
 	if err := repo.DeleteRepo(client); err != nil {
+
 		response.HandleGithubErrors(c, err)
 	}
 
@@ -186,7 +155,7 @@ func PullRequests(c *gin.Context) {
 	}
 
 	opt := &github.PullRequestListOptions{State: "open", Sort: "created", Direction: "desc"}
-	pullRequests, _, err := client.PullRequests.List(c, params["username"], params["repoName"], opt)
+	pullRequests, _, err := client.ListPullRequests(c, params["username"], params["repoName"], opt)
 	if err != nil {
 		response.HandleGithubErrors(c, err)
 	}

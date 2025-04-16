@@ -37,6 +37,9 @@ func HandleGithubErrors(c *gin.Context, err error) {
 			// 404 Not Found: repository does not exist for a given owner and repo name
 			case 404:
 				StatusNotFound(c)
+			// 409 Conflict: if the repository already exists
+			case 409:
+				StatusConflict(c)
 			// 422 Unprocessable Entity: if the request is invalid
 			case 422:
 				StatusUnprocessableEntity(c, err)
@@ -47,5 +50,6 @@ func HandleGithubErrors(c *gin.Context, err error) {
 				StatusInternalServerError(c, err)
 			}
 		}
+		StatusInternalServerError(c, err)
 	}
 }
