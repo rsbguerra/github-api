@@ -60,7 +60,6 @@ func CreateRepo(c *gin.Context) {
 // DeleteRepo handles the deletion of a repository.
 // It expects the following parameters:
 //   - token: The authentication token for the GitHub API.
-//   - repoName: The name of the repository to be deleted.
 //
 // The function validates the repository model and token, and if valid,
 // it deletes the specified repository using the provided token.
@@ -180,17 +179,22 @@ func PullRequests(c *gin.Context) {
 //   - 404 Not Found: If the specified user does not exist or has no repositories.
 //   - 500 Internal Server Error: If an error occurs while retrieving the repositories.
 func ListRepos(c *gin.Context) {
-	token, username := c.Param("token"), c.Param("username")
+	token := c.Param("token")
 	client, err := auth.GetClient(token)
-
 	// Check if the token is valid
+	if err != nil {
+		response.StatusUnauthorized(c)
+		return
+	}
+	// Check if the user is authenticated
+	user, _, err := client.GetUser(c, "")
 	if err != nil {
 		response.StatusUnauthorized(c)
 		return
 	}
 
 	opt := &github.RepositoryListOptions{Type: "owner", Sort: "updated", Direction: "desc"}
-	repos, _, err := client.ListRepos(c, username, opt)
+	repos, _, err := client.ListRepos(c, *user.Login, opt)
 
 	// Check if the request to list repositories was successful
 	if err != nil {
