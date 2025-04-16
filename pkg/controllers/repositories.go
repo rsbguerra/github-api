@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"errors"
 	"github-api/pkg/auth"
 	"github-api/pkg/models"
 	"github-api/pkg/response"
@@ -22,18 +21,25 @@ import (
 //   - 401 Unauthorized: If the provided token is invalid or authentication fails.
 //   - 500 Internal Server Error: If an error occurs while creating the repository.
 func CreateRepo(c *gin.Context) {
+	// Extract the token from the request parameters
+	var token = c.Param("token")
+	if token == "" {
+		response.StatusBadRequestMissingParams(c, []string{token})
+		return
+	}
+
 	var repo, err = models.ConvertFromContext(c)
 	if (repo == models.RepositoryModel{}) || err != nil {
-		response.StatusBadRequest(c)
+		response.HandleGithubErrors(c, err)
 		return
 	}
 	client, err := auth.GetClient(c.Param("token"))
 	if err != nil {
-		response.StatusUnauthorized(c)
+		response.HandleGithubErrors(c, err)
 		return
 	}
 	if err := repo.CreateNew(client); err != nil {
-		response.StatusInternalServerError(c, err)
+		response.HandleGithubErrors(c, err)
 		return
 	}
 	response.StatusCreated(c, repo)
@@ -50,11 +56,18 @@ func CreateRepo(c *gin.Context) {
 // The function also checks if the repository exists before attempting to delete it.
 // Responses:
 //   - 204 No Content: If the repository is successfully deleted.
-//   - 400 Bad Request: If the repository model is invalid or cannot be deleted.
+//   - 400 Bad Request: If the repository model is invalid, cannot be deleted or if there are no request parameters.
 //   - 401 Unauthorized: If the provided token is invalid or authentication fails.
 //   - 404 Not Found: If the repository does not exist.
 //   - 500 Internal Server Error: If an error occurs while deleting the repository.
 func DeleteRepo(c *gin.Context) {
+	// Extract the token from the request parameters
+	var token = c.Param("token")
+	if token == "" {
+		response.StatusBadRequestMissingParams(c, []string{token})
+		return
+	}
+
 	var repo, err = models.ConvertFromContext(c)
 
 	// Check if the repository model is valid
@@ -63,16 +76,16 @@ func DeleteRepo(c *gin.Context) {
 		return
 	}
 
-	client, err := auth.GetClient(c.Param("token"))
 	// Check if the token is valid
+	client, err := auth.GetClient(c.Param("token"))
 	if err != nil {
-		response.StatusUnauthorized(c)
+		response.HandleGithubErrors(c, err)
 		return
 	}
 
 	// Check if the repository exists
 	if err := repo.DeleteRepo(client); err != nil {
-		response.StatusInternalServerError(c, err)
+		response.HandleGithubErrors(c, err)
 	}
 
 	// If the repository was deleted successfully, return a 204 No Content response
@@ -96,36 +109,36 @@ func DeleteRepo(c *gin.Context) {
 //   - 404 Not Found: If the specified repository does not exist.
 //   - 500 Internal Server Error: If an error occurs while retrieving the pull requests.
 func PullRequests(c *gin.Context) {
-	token, username, repoName := c.Param("token"), c.Param("username"), c.Param("repoName")
 
-	client, err := auth.GetClient(token)
+	// Extract the token and parameters from the request
+	params := map[string]string{
+		"token":    c.Param("token"),
+		"username": c.Param("username"),
+		"repoName": c.Param("repoName"),
+	}
+
+	var missingParams []string
+	for key, value := range params {
+		if value == "" {
+			missingParams = append(missingParams, key)
+		}
+	}
+	if len(missingParams) > 0 {
+		response.StatusBadRequestMissingParams(c, missingParams)
+		return
+	}
+
+	// Check if the token is valid
+	client, err := auth.GetClient(params["token"])
 	if err != nil {
-		response.StatusUnauthorized(c)
+		response.HandleGithubErrors(c, err)
 		return
 	}
 
 	opt := &github.PullRequestListOptions{State: "open", Sort: "created", Direction: "desc"}
-	pullRequests, _, err := client.PullRequests.List(c, username, repoName, opt)
+	pullRequests, _, err := client.PullRequests.List(c, params["username"], params["repoName"], opt)
 	if err != nil {
-		var ghErr *github.ErrorResponse
-		if errors.As(err, &ghErr) {
-			switch ghErr.Response.StatusCode {
-			// 401 Unauthorized: invalid token or authentication failed
-			case 401:
-				response.StatusUnauthorized(c)
-				return
-			// 403 Forbidden: user does not have permission to access the repository.
-			case 403:
-				response.StatusForbidden(c)
-				return
-			// 404 Not Found: repository does not exist for a given owner and repo name
-			case 404:
-				response.StatusNotFound(c)
-				return
-			}
-		}
-		// 500 Internal Server Error: if an error occurs while retrieving the pull requests
-		response.StatusInternalServerError(c, err)
+		response.HandleGithubErrors(c, err)
 	}
 
 	// 200 OK: if the pull requests are successfully retrieved

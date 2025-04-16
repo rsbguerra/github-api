@@ -21,8 +21,15 @@ import (
 //   - 401 Unauthorized: If the provided token is invalid or authentication fails.
 //   - 500 Internal Server Error: If an error occurs while retrieving the repositories.
 func ListRepos(c *gin.Context) {
-	token, username := c.Param("token"), c.Param("username")
-	client, err := auth.GetClient(token)
+	//token, username := c.Param("token"), c.Param("username")
+
+	// Extract the token and parameters from the request
+	params := map[string]string{
+		"token":    c.Param("token"),
+		"username": c.Param("username"),
+	}
+
+	client, err := auth.GetClient(params["token"])
 
 	// Check if the token is valid
 	if err != nil {
@@ -31,7 +38,7 @@ func ListRepos(c *gin.Context) {
 	}
 
 	opt := &github.RepositoryListOptions{Type: "owner", Sort: "updated", Direction: "desc"}
-	repos, _, err := client.Repositories.List(c, username, opt)
+	repos, _, err := client.Repositories.List(c, params["username"], opt)
 
 	// Check if the request to list repositories was successful
 	if err != nil {

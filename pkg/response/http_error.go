@@ -8,6 +8,12 @@ import (
 func StatusBadRequest(c *gin.Context) {
 	c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
 }
+func StatusBadRequestMissingParams(c *gin.Context, missingParams []string) {
+	c.JSON(http.StatusBadRequest, gin.H{
+		"error":          "Missing required parameters",
+		"missing_params": missingParams,
+	})
+}
 func StatusUnauthorized(c *gin.Context) {
 	c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid access token"})
 }
@@ -19,4 +25,7 @@ func StatusNotFound(c *gin.Context) {
 }
 func StatusForbidden(c *gin.Context) {
 	c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+}
+func StatusUnprocessableEntity(c *gin.Context, err error) {
+	c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Unprocessable entity: " + err.Error()})
 }
