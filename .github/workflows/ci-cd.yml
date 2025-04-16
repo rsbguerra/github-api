@@ -1,0 +1,63 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - dev-cdci
+  pull_request:
+    branches:
+      - dev-cdci
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Set up Go environment
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.24
+
+      # Install dependencies
+      - name: Install dependencies
+        run: go mod tidy
+
+      # Run tests
+      - name: Run tests
+        run: go test ./... -v
+
+      # Linting
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+
+      # Security checks
+      - name: Run gosec
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          gosec ./...
+
+      # Build Docker image
+      - name: Build Docker image
+        run: |
+          docker build -t ghcr.io/rsbguerra/github-api:latest .
+
+      # Set up Minikube
+      - name: Set up Minikube
+        run: |
+          curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          chmod +x minikube
+          sudo mv minikube /usr/local/bin/
+          minikube start --driver=none
+
+      # Deploy to Minikube
+      - name: Deploy to Minikube
+        run: |
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
