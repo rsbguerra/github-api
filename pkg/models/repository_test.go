@@ -13,6 +13,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// TestConvertFromContext tests the ConvertFromContext function.
+// It verifies that the function correctly parses a JSON request body into a RepositoryModel object.
 func TestConvertFromContext(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
@@ -28,6 +30,8 @@ func TestConvertFromContext(t *testing.T) {
 	assert.True(t, *repo.Private)
 }
 
+// TestRepoExists tests the RepoExists method of the RepositoryModel struct.
+// It verifies that the method correctly checks if a repository exists using a mocked GitHub client.
 func TestRepoExists(t *testing.T) {
 	mockClient := new(mocks.MockGitHubClient)
 	repo := RepositoryModel{Repository: &github.Repository{Name: github.String("test-repo")}}
@@ -46,6 +50,8 @@ func TestRepoExists(t *testing.T) {
 	assert.True(t, exists)
 }
 
+// TestCloneRepo tests the CloneRepo method of the RepositoryModel struct.
+// It verifies that the method attempts to clone a repository and expects an error in the test environment.
 func TestCloneRepo(t *testing.T) {
 	repo := RepositoryModel{Repository: &github.Repository{Name: github.String("test-repo"), URL: github.String("https://github.com/test/test-repo")}}
 
@@ -53,6 +59,8 @@ func TestCloneRepo(t *testing.T) {
 	assert.Error(t, err) // Expecting an error since the URL is not accessible in the test environment
 }
 
+// TestCreateNew tests the CreateNew method of the RepositoryModel struct.
+// It verifies that the method successfully creates a new repository using a mocked GitHub client.
 func TestCreateNew(t *testing.T) {
 	mockClient := new(mocks.MockGitHubClient)
 	repo := RepositoryModel{Repository: &github.Repository{Name: github.String("test-repo"), Private: github.Bool(true)}}
@@ -66,6 +74,8 @@ func TestCreateNew(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// TestDeleteRepo tests the DeleteRepo method of the RepositoryModel struct.
+// It verifies that the method successfully deletes a repository using a mocked GitHub client.
 func TestDeleteRepo(t *testing.T) {
 	mockClient := new(mocks.MockGitHubClient)
 	repo := RepositoryModel{Repository: &github.Repository{Name: github.String("test-repo")}}

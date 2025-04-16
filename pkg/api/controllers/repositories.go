@@ -19,7 +19,6 @@ import (
 //   - 201 Created: If the repository is successfully created.
 //   - 400 Bad Request: If the repository model is invalid or cannot be created.
 //   - 401 Unauthorized: If the provided token is invalid or authentication fails.
-//   - 403 Forbidden: If the user does not have permission to create the repository.
 //   - 404 Not Found: If the specified user does not exist or has no repositories.
 //   - 409 Conflict: If the repository already exists.
 //   - 500 Internal Server Error: If an error occurs while creating the repository.
@@ -27,18 +26,21 @@ func CreateRepo(c *gin.Context) {
 	// Extract the token from the request parameters
 	var token = c.Param("token")
 	if token == "" {
+		// Response: 400 Bad Request if the token is missing
 		response.StatusBadRequestMissingParams(c, []string{token})
 		return
 	}
 
 	var repo, err = models.ConvertFromContext(c)
 	if (repo == models.RepositoryModel{}) || err != nil {
+		// Response: 400 Bad Request if the repository model is invalid
 		response.StatusBadRequest(c)
 		return
 	}
 	// Check if the token is valid
 	client, err := auth.GetClient(c.Param("token"))
 	if err != nil {
+		// Response: 401 Unauthorized if the token is invalid
 		response.HandleGithubErrors(c, err)
 		return
 	}
@@ -46,14 +48,17 @@ func CreateRepo(c *gin.Context) {
 	// Check if the repository model already exists
 	exists, err := repo.RepoExists(client)
 	if exists || err != nil {
+		// Response: 409 Conflict if the repository already exists
 		response.StatusConflict(c)
 		return
 	}
 
 	if err := repo.CreateNew(client); err != nil {
-		response.HandleGithubErrors(c, err)
+		// Response: 403 Forbidden if the user does not have permission to create the repository
+		response.StatusForbidden(c)
 		return
 	}
+	// Response: 201 Created if the repository is successfully created
 	response.StatusCreated(c, repo)
 }
 
@@ -75,6 +80,7 @@ func DeleteRepo(c *gin.Context) {
 	// Extract the token from the request parameters
 	var token = c.Param("token")
 	if token == "" {
+		// Response: 400 Bad Request if the token is missing
 		response.StatusBadRequestMissingParams(c, []string{token})
 		return
 	}
@@ -83,6 +89,7 @@ func DeleteRepo(c *gin.Context) {
 
 	// Check if the repository model is valid
 	if (repo == models.RepositoryModel{}) || err != nil {
+		// Response: 400 Bad Request if the repository model is invalid
 		response.StatusBadRequest(c)
 		return
 	}
@@ -90,6 +97,7 @@ func DeleteRepo(c *gin.Context) {
 	// Check if the token is valid
 	client, err := auth.GetClient(c.Param("token"))
 	if err != nil {
+		// Response: 401 Unauthorized if the token is invalid
 		response.HandleGithubErrors(c, err)
 		return
 	}
@@ -97,12 +105,13 @@ func DeleteRepo(c *gin.Context) {
 	// Check if the repository exists
 	exists, err := repo.RepoExists(client)
 	if exists || err != nil {
+		// Response: 404 Not Found if the repository does not exist
 		response.HandleGithubErrors(c, err)
 	}
 
 	// Delete the repository
 	if err := repo.DeleteRepo(client); err != nil {
-
+		// Response: 500 Internal Server Error if an error occurs while deleting the repository
 		response.HandleGithubErrors(c, err)
 	}
 
@@ -135,6 +144,7 @@ func PullRequests(c *gin.Context) {
 		"repoName": c.Param("repoName"),
 	}
 
+	// Check if the token is valid
 	var missingParams []string
 	for key, value := range params {
 		if value == "" {
@@ -142,6 +152,7 @@ func PullRequests(c *gin.Context) {
 		}
 	}
 	if len(missingParams) > 0 {
+		// Response: 400 Bad Request if the token or parameters are missing
 		response.StatusBadRequestMissingParams(c, missingParams)
 		return
 	}
@@ -149,6 +160,15 @@ func PullRequests(c *gin.Context) {
 	// Check if the token is valid
 	client, err := auth.GetClient(params["token"])
 	if err != nil {
+		// Response: 401 Unauthorized if the token is invalid
+		response.HandleGithubErrors(c, err)
+		return
+	}
+
+	// Check if repository exists
+	_, _, err = client.GetRepositories(c, params["username"], params["repoName"])
+	if err != nil {
+		// Response: 404 Not Found if the repository does not exist
 		response.HandleGithubErrors(c, err)
 		return
 	}
@@ -156,7 +176,8 @@ func PullRequests(c *gin.Context) {
 	opt := &github.PullRequestListOptions{State: "open", Sort: "created", Direction: "desc"}
 	pullRequests, _, err := client.ListPullRequests(c, params["username"], params["repoName"], opt)
 	if err != nil {
-		response.HandleGithubErrors(c, err)
+		// Response: 403 Forbidden if the user does not have permission to access the repository
+		response.StatusForbidden(c)
 	}
 
 	// 200 OK: if the pull requests are successfully retrieved
@@ -175,20 +196,20 @@ func PullRequests(c *gin.Context) {
 // Responses:
 //   - 200 OK: If the repositories are successfully retrieved.
 //   - 401 Unauthorized: If the provided token is invalid or authentication fails.
-//   - 403 Forbidden: If the user does not have permission to access the repositories.
-//   - 404 Not Found: If the specified user does not exist or has no repositories.
 //   - 500 Internal Server Error: If an error occurs while retrieving the repositories.
 func ListRepos(c *gin.Context) {
 	token := c.Param("token")
 	client, err := auth.GetClient(token)
 	// Check if the token is valid
 	if err != nil {
+		// Response: 401 Unauthorized if the token is invalid
 		response.StatusUnauthorized(c)
 		return
 	}
 	// Check if the user is authenticated
 	user, _, err := client.GetUser(c, "")
 	if err != nil {
+		// Response: 401 an error occoured while retrieving the user
 		response.StatusUnauthorized(c)
 		return
 	}
@@ -198,9 +219,11 @@ func ListRepos(c *gin.Context) {
 
 	// Check if the request to list repositories was successful
 	if err != nil {
+		// Response: 500 Internal Server Error if an error occurs while retrieving the repositories
 		response.StatusInternalServerError(c, err)
 		return
 	}
+	// Response: 200 OK if the repositories are successfully retrieved
 	response.StatusOK(c, repos)
 }
 
