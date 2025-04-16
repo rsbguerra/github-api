@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/oauth2"
 	"net/http"
+	"os"
 	"testing"
 )
 
@@ -25,8 +26,8 @@ func (m *mockOAuth2TokenSource) Token() (*oauth2.Token, error) {
 }
 
 func TestGetClientWithValidToken(t *testing.T) {
-	token := "valid-token"
-	client, err := GetClient(token)
+	validToken := os.Getenv("TEST_AUTH_TOKEN")
+	client, err := GetClient(validToken)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, client)
