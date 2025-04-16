@@ -50,7 +50,7 @@ var MockAuth = struct {
 
 // TestCreateRepo tests the CreateRepo function for various scenarios, including success and failure cases.
 func TestCreateRepo(t *testing.T) {
-	validToken := os.Getenv("TEST_AUTH_TOKEN")
+	validToken := os.Getenv("AUTH_TOKEN")
 
 	// Set up Gin context and recorder
 	gin.SetMode(gin.TestMode)
