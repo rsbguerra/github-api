@@ -2,7 +2,7 @@ package models
 
 import (
 	"bytes"
-	"context"
+	"github-api/pkg/mocks"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,36 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
-
-// MockGitHubClient is a mock implementation of the GitHubClient.
-type MockGitHubClient struct {
-	mock.Mock
-}
-
-func (m *MockGitHubClient) GetUser(ctx context.Context, user string) (*github.User, *github.Response, error) {
-	args := m.Called(ctx, user)
-	return args.Get(0).(*github.User), args.Get(1).(*github.Response), args.Error(2)
-}
-func (m *MockGitHubClient) GetRepositories(ctx context.Context, owner string, repo string) (*github.Repository, *github.Response, error) {
-	args := m.Called(ctx, owner, repo)
-	return args.Get(0).(*github.Repository), args.Get(1).(*github.Response), args.Error(2)
-}
-func (m *MockGitHubClient) CreateRepository(ctx context.Context, org string, repo *github.Repository) (*github.Repository, *github.Response, error) {
-	args := m.Called(ctx, org, repo)
-	return args.Get(0).(*github.Repository), args.Get(1).(*github.Response), args.Error(2)
-}
-func (m *MockGitHubClient) DeleteRepository(ctx context.Context, owner string, repo string) (*github.Response, error) {
-	args := m.Called(ctx, owner, repo)
-	return args.Get(0).(*github.Response), args.Error(1)
-}
-func (m *MockGitHubClient) ListPullRequests(ctx context.Context, owner string, repo string, opt *github.PullRequestListOptions) ([]*github.PullRequest, *github.Response, error) {
-	args := m.Called(ctx, owner, repo)
-	return args.Get(0).([]*github.PullRequest), args.Get(1).(*github.Response), args.Error(2)
-}
-func (m *MockGitHubClient) ListRepos(ctx context.Context, owner string, opt *github.RepositoryListOptions) ([]*github.Repository, *github.Response, error) {
-	args := m.Called(ctx, owner, opt)
-	return args.Get(0).([]*github.Repository), args.Get(1).(*github.Response), args.Error(2)
-}
 
 func TestConvertFromContext(t *testing.T) {
 	gin.SetMode(gin.TestMode)
@@ -59,7 +29,7 @@ func TestConvertFromContext(t *testing.T) {
 }
 
 func TestRepoExists(t *testing.T) {
-	mockClient := new(MockGitHubClient)
+	mockClient := new(mocks.MockGitHubClient)
 	repo := RepositoryModel{Repository: &github.Repository{Name: github.String("test-repo")}}
 
 	mockClient.On("GetUser", mock.Anything, "").Return(
@@ -84,7 +54,7 @@ func TestCloneRepo(t *testing.T) {
 }
 
 func TestCreateNew(t *testing.T) {
-	mockClient := new(MockGitHubClient)
+	mockClient := new(mocks.MockGitHubClient)
 	repo := RepositoryModel{Repository: &github.Repository{Name: github.String("test-repo"), Private: github.Bool(true)}}
 
 	mockClient.On("CreateRepository", mock.Anything, "", mock.Anything).Return(
@@ -97,7 +67,7 @@ func TestCreateNew(t *testing.T) {
 }
 
 func TestDeleteRepo(t *testing.T) {
-	mockClient := new(MockGitHubClient)
+	mockClient := new(mocks.MockGitHubClient)
 	repo := RepositoryModel{Repository: &github.Repository{Name: github.String("test-repo")}}
 
 	mockClient.On("GetUser", mock.Anything, "").Return(
