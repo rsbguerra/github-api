@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"github-api/pkg/interfaces"
 	"github.com/gin-gonic/gin"
 	"github.com/go-git/go-git/v5"
 	"github.com/google/go-github/v50/github"
@@ -32,6 +33,30 @@ func ConvertFromContext(c *gin.Context) (RepositoryModel, error) {
 	return repo, nil
 }
 
+// RepoExists checks if the repository exists on GitHub.
+//
+// Parameters:
+//   - client: A GitHub client instance used to interact with the GitHub API.
+//
+// Returns:
+//   - bool: True if the repository exists, false otherwise.
+//   - error: An error if the API request fails, or nil if successful.
+func (r *RepositoryModel) RepoExists(client interfaces.GitHubClient) (bool, error) {
+	username, _, err := client.GetUser(context.Background(), "")
+	if err != nil {
+		return false, err
+	}
+
+	_, resp, err := client.GetRepositories(context.Background(), *username.Login, *r.Name)
+	if err != nil {
+		if resp != nil && resp.StatusCode == 404 {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
 // CloneRepo clones the repository specified by the Repository struct to a local directory.
 // It uses the repository's Name as the target directory and the URL as the source.
 // The cloning process outputs progress to the standard output.
@@ -56,14 +81,14 @@ func (r *RepositoryModel) CloneRepo() error {
 //
 // Returns:
 //   - An error if the repository creation fails, otherwise nil.
-func (r *RepositoryModel) CreateNew(client *github.Client) error {
+func (r *RepositoryModel) CreateNew(client interfaces.GitHubClient) error {
 
 	repo := &github.Repository{
 		Name:    github.String(*r.Name),
 		Private: github.Bool(*r.Private),
 	}
 
-	_, _, err := client.Repositories.Create(context.Background(), "", repo)
+	_, _, err := client.CreateRepository(context.Background(), "", repo)
 	return err
 }
 
@@ -78,7 +103,11 @@ func (r *RepositoryModel) CreateNew(client *github.Client) error {
 // Returns:
 //   - error: An error if the deletion fails, or nil if the operation is
 //     successful.
-func (r *RepositoryModel) DeleteRepo(client *github.Client) error {
-	_, err := client.Repositories.Delete(context.Background(), *r.Owner.Name, *r.Name)
+func (r *RepositoryModel) DeleteRepo(client interfaces.GitHubClient) error {
+	username, _, err := client.GetUser(context.Background(), "")
+	if err != nil {
+		return err
+	}
+	_, err = client.DeleteRepository(context.Background(), *username.Login, *r.Name)
 	return err
 }
