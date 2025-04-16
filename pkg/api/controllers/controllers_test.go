@@ -78,7 +78,7 @@ func TestCreateRepo(t *testing.T) {
 		{
 			name:           "Successful repository creation",
 			token:          validToken,
-			requestBody:    `{"name": "` + repoName + `", "private": false}`,
+			requestBody:    `{"name": test-repo", "private": false}`,
 			expectedStatus: http.StatusCreated,
 			mockError:      nil,
 		},
@@ -87,6 +87,13 @@ func TestCreateRepo(t *testing.T) {
 			token:          "invalid-token",
 			requestBody:    `{"name": "` + repoName + `", "private": false}`,
 			expectedStatus: http.StatusUnauthorized,
+			mockError:      nil,
+		},
+		{
+			name:           "Empty token",
+			token:          "",
+			requestBody:    `{"name": "` + repoName + `", "private": false}`,
+			expectedStatus: http.StatusBadRequest,
 			mockError:      nil,
 		},
 		{
@@ -103,6 +110,7 @@ func TestCreateRepo(t *testing.T) {
 			expectedStatus: http.StatusConflict,
 			mockError:      nil,
 		},
+		// Note: Test fails because the mock error is not being returned correctly
 		{
 			name:           "Error creating repository",
 			token:          validToken,
@@ -132,7 +140,6 @@ func TestCreateRepo(t *testing.T) {
 }
 func TestDeleteRepo(t *testing.T) {
 	validToken := os.Getenv("TEST_AUTH_TOKEN")
-
 	// Set up Gin context and recorder
 	gin.SetMode(gin.TestMode)
 	router := gin.Default()
@@ -141,6 +148,11 @@ func TestDeleteRepo(t *testing.T) {
 	// Mock dependencies
 	mockRepo := new(MockRepositoryModel)
 	mockRepo.On("DeleteRepo", mock.Anything).Return(nil)
+
+	_, err := http.NewRequest(http.MethodPost, "/repositories/"+validToken, bytes.NewBufferString(`{"name": "test-repo"}`))
+	if err != nil {
+		return
+	}
 
 	MockAuth.GetClient = func(token string) (interface{}, error) {
 		if token == validToken {
@@ -160,28 +172,29 @@ func TestDeleteRepo(t *testing.T) {
 		{
 			name:           "Successful repository deletion",
 			token:          validToken,
-			requestBody:    `{"repoName": "test-repo"}`,
+			requestBody:    `{"name": "test-repo"}`,
 			expectedStatus: http.StatusNoContent,
 			mockError:      nil,
 		},
 		{
 			name:           "Invalid token",
 			token:          "invalid-token",
-			requestBody:    `{"repoName": "test-repo"}`,
+			requestBody:    `{"name": "test-repo"}`,
 			expectedStatus: http.StatusUnauthorized,
 			mockError:      nil,
 		},
 		{
 			name:           "Repository not found",
 			token:          validToken,
-			requestBody:    `{"repoName": "nonexistent-repo"}`,
+			requestBody:    `{"name": "nonexistent-repo"}`,
 			expectedStatus: http.StatusNotFound,
 			mockError:      errors.New("repository not found"),
 		},
+		// Note: Test fails because the mock error is not being returned correctly
 		{
 			name:           "Error deleting repository",
 			token:          validToken,
-			requestBody:    `{"repoName": "test-repo"}`,
+			requestBody:    `{"name": "test-repo"}`,
 			expectedStatus: http.StatusInternalServerError,
 			mockError:      errors.New("deletion error"),
 		},
@@ -211,7 +224,7 @@ func TestListRepos(t *testing.T) {
 	// Set up Gin context and recorder
 	gin.SetMode(gin.TestMode)
 	router := gin.Default()
-	router.GET("/repositories/:token/", ListRepos)
+	router.GET("/repositories/:token", ListRepos)
 
 	// Mock dependencies
 	MockAuth.GetClient = func(token string) (interface{}, error) {
@@ -225,34 +238,27 @@ func TestListRepos(t *testing.T) {
 	tests := []struct {
 		name           string
 		token          string
-		username       string
 		expectedStatus int
 		mockError      error
-		mockRepos      []string
 	}{
 		{
 			name:           "Successful repository retrieval",
 			token:          validToken,
-			username:       "test-user",
 			expectedStatus: http.StatusOK,
 			mockError:      nil,
-			mockRepos:      []string{"repo1", "repo2"},
 		},
 		{
 			name:           "Invalid token",
 			token:          "invalid-token",
-			username:       "test-user",
 			expectedStatus: http.StatusUnauthorized,
 			mockError:      nil,
-			mockRepos:      nil,
 		},
+		// Note: Test fails because the mock error is not being returned correctly
 		{
 			name:           "Internal server error",
 			token:          validToken,
-			username:       "test-user",
 			expectedStatus: http.StatusInternalServerError,
 			mockError:      errors.New("internal error"),
-			mockRepos:      nil,
 		},
 	}
 
@@ -267,7 +273,7 @@ func TestListRepos(t *testing.T) {
 			}
 
 			// Create request and response recorder
-			req, _ := http.NewRequest(http.MethodGet, "/repositories/"+tt.token, nil)
+			req, _ := http.NewRequest(http.MethodGet, "/repositories/"+tt.token, bytes.NewBufferString(""))
 			rec := httptest.NewRecorder()
 
 			// Perform the request
@@ -281,7 +287,6 @@ func TestListRepos(t *testing.T) {
 
 func TestListPullRequests(t *testing.T) {
 	validToken := os.Getenv("TEST_AUTH_TOKEN")
-
 	// Set up Gin context and recorder
 	gin.SetMode(gin.TestMode)
 	router := gin.Default()
@@ -308,8 +313,8 @@ func TestListPullRequests(t *testing.T) {
 		{
 			name:           "Successful pull request retrieval",
 			token:          validToken,
-			username:       "test-user",
-			repoName:       "test-repo",
+			username:       "rsbguerra",
+			repoName:       "github-api",
 			expectedStatus: http.StatusOK,
 			mockError:      nil,
 			mockPRs:        []string{"PR1", "PR2"},
@@ -323,6 +328,7 @@ func TestListPullRequests(t *testing.T) {
 			mockError:      nil,
 			mockPRs:        nil,
 		},
+		// Note: Test fails because the mock error is not being returned correctly
 		{
 			name:           "Internal server error",
 			token:          validToken,
@@ -345,7 +351,7 @@ func TestListPullRequests(t *testing.T) {
 			}
 
 			// Create request and response recorder
-			req, _ := http.NewRequest(http.MethodGet, "/pull-requests/"+tt.token+"/"+tt.username+"/"+tt.repoName, nil)
+			req, _ := http.NewRequest(http.MethodGet, "/pull-requests/"+tt.username+"/"+tt.repoName+"/"+tt.token, nil)
 			rec := httptest.NewRecorder()
 
 			// Perform the request
