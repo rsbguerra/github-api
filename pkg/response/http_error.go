@@ -1,6 +1,7 @@
 package response
 
 import (
+	"github-api/pkg/models"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -28,4 +29,8 @@ func StatusForbidden(c *gin.Context) {
 }
 func StatusUnprocessableEntity(c *gin.Context, err error) {
 	c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Unprocessable entity: " + err.Error()})
+}
+
+func StatusConflict(c *gin.Context, repo models.RepositoryModel) {
+	c.JSON(http.StatusConflict, gin.H{"error": "Conflict, repository already exists", "repo": repo})
 }

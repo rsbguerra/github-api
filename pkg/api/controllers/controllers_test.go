@@ -1,12 +1,15 @@
-package test
+package controllers
 
 import (
 	"bytes"
 	"errors"
-	"github-api/pkg/controllers"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -23,6 +26,13 @@ func (m *MockRepositoryModel) CreateNew(client interface{}) error {
 	return args.Error(0)
 }
 
+func GenerateRandomRepoName() string {
+	words := []string{"alpha", "beta", "gamma", "delta", "omega", "nova", "lunar", "solar", "cosmic", "stellar"}
+	rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	return strings.Join([]string{words[rand.Intn(len(words))], words[rand.Intn(len(words))]}, "-")
+}
+
 // MockAuth is a mock implementation of the auth package.
 var MockAuth = struct {
 	GetClient func(token string) (interface{}, error)
@@ -33,14 +43,18 @@ var MockAuth = struct {
 }
 
 func TestCreateRepo(t *testing.T) {
-	validToken := "os.Getenv(TEST_AUTH_TOKEN)"
+	validToken := os.Getenv("TEST_AUTH_TOKEN")
 
 	println(validToken)
 
 	// Set up Gin context and recorder
 	gin.SetMode(gin.TestMode)
+	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		// Do nothing or return a 204 No Content
+		w.WriteHeader(http.StatusNoContent)
+	})
 	router := gin.Default()
-	router.POST("/repositories/:token", controllers.CreateRepo)
+	router.POST("/repositories/:token", CreateRepo)
 
 	// Mock dependencies
 	mockRepo := new(MockRepositoryModel)
@@ -53,6 +67,8 @@ func TestCreateRepo(t *testing.T) {
 		return nil, errors.New("unauthorized")
 	}
 
+	repoName := GenerateRandomRepoName()
+
 	// Test cases
 	tests := []struct {
 		name           string
@@ -64,14 +80,14 @@ func TestCreateRepo(t *testing.T) {
 		{
 			name:           "Successful repository creation",
 			token:          validToken,
-			requestBody:    `{"name": "test-repo", "private": false}`,
+			requestBody:    `{"name": "` + repoName + `", "private": false}`,
 			expectedStatus: http.StatusCreated,
 			mockError:      nil,
 		},
 		{
 			name:           "Invalid token",
 			token:          "invalid-token",
-			requestBody:    `{"name": "test-repo", "private": true}`,
+			requestBody:    `{"name": "` + repoName + `", "private": false}`,
 			expectedStatus: http.StatusUnauthorized,
 			mockError:      nil,
 		},
@@ -83,9 +99,16 @@ func TestCreateRepo(t *testing.T) {
 			mockError:      nil,
 		},
 		{
+			name:           "Repository already exists",
+			token:          validToken,
+			requestBody:    `{"name": "` + repoName + `", "private": false}`,
+			expectedStatus: http.StatusConflict,
+			mockError:      nil,
+		},
+		{
 			name:           "Error creating repository",
 			token:          validToken,
-			requestBody:    `{"name": "test-repo", "private": true}`,
+			requestBody:    `{"name": "` + repoName + `", "private": false}`,
 			expectedStatus: http.StatusInternalServerError,
 			mockError:      errors.New("creation error"),
 		},
@@ -109,3 +132,8 @@ func TestCreateRepo(t *testing.T) {
 		})
 	}
 }
+func TestDeleteRepo(t *testing.T) {
+
+}
+func TestListRepos(t *testing.T)        {}
+func TestListPullRequests(t *testing.T) {}

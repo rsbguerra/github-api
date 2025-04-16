@@ -2,7 +2,8 @@ package auth
 
 import (
 	"context"
-	"errors"
+	"github-api/pkg/interfaces"
+	"github-api/pkg/models"
 	"github.com/google/go-github/v50/github"
 	"golang.org/x/oauth2"
 )
@@ -18,18 +19,11 @@ import (
 // Returns:
 //   - *github.Client: A GitHub client authenticated with the provided access token.
 //   - error: An error if the access token is invalid or if there was an issue creating the client.
-func GetClient(accessToken string) (*github.Client, error) {
-	ctx := context.Background()
+func GetClient(token string) (interfaces.GitHubClient, error) {
 	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: accessToken},
+		&oauth2.Token{AccessToken: token},
 	)
-	tc := oauth2.NewClient(ctx, ts)
+	tc := oauth2.NewClient(context.Background(), ts)
 	client := github.NewClient(tc)
-
-	_, _, err := client.Users.Get(ctx, "")
-	if err != nil {
-		return nil, errors.New("invalid access token")
-	}
-
-	return client, nil
+	return &models.GitHubClientWrapper{Client: client}, nil
 }
